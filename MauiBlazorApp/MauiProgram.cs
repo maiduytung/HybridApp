@@ -1,5 +1,6 @@
 ﻿using BlazorShared.Data;
 using Microsoft.Extensions.Logging;
+using MudBlazor.Services;
 
 namespace MauiBlazorApp
 {
@@ -21,7 +22,7 @@ namespace MauiBlazorApp
 		builder.Services.AddBlazorWebViewDeveloperTools();
 		builder.Logging.AddDebug();
 #endif
-
+            builder.Services.AddMudServices();
             builder.Services.AddSingleton<WeatherForecastService>();
 
             return builder.Build();
