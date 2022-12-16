@@ -1,0 +1,59 @@
+﻿@page "/location"
+@using Microsoft.JSInterop
+@inject IJSRuntime jsRuntime
+
+<PageTitle>Location</PageTitle>
+
+<MudButton Variant="Variant.Filled" Color="Color.Secondary" Class="my-2" OnClick="@GetLocationAsync">Get Location</MudButton>
+
+@if (geoCoordinates is not null)
+{
+    <MudText>Latitude : @geoCoordinates.Latitude</MudText>
+    <MudText>Longitude : @geoCoordinates.Longitude</MudText>
+    <MudText>Accuracy : @geoCoordinates.Accuracy</MudText>
+}
+
+@code {
+    private readonly Lazy<Task<IJSObjectReference>> moduleTask = default!;
+    private readonly DotNetObjectReference<Location> dotNetObjectReference;
+    private GeoCoordinates? geoCoordinates = null;
+
+    public Location()
+    {
+        moduleTask = new(() => jsRuntime!.InvokeAsync<IJSObjectReference>(
+            identifier: "import",
+            args: "./_content/BlazorShared/geoLocationJsInterop.js")
+        .AsTask());
+
+        dotNetObjectReference = DotNetObjectReference.Create(this);
+    }
+
+    public async Task GetLocationAsync()
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync(identifier: "getCurrentPosition", dotNetObjectReference);
+    }
+
+    [JSInvokable]
+    public async Task OnSuccessAsync(GeoCoordinates geoCoordinates)
+    {
+        this.geoCoordinates = geoCoordinates;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (moduleTask.IsValueCreated)
+        {
+            var module = await moduleTask.Value;
+            await module.DisposeAsync();
+        }
+    }
+
+    public class GeoCoordinates
+    {
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public double Accuracy { get; set; }
+    }
+}

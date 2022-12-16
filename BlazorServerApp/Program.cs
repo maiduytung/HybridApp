@@ -1,4 +1,6 @@
-using BlazorShared.Data;
+using BlazorShared;
+using BlazorShared.Services;
+using Microsoft.Extensions.Configuration;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,7 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddMudServices();
-builder.Services.AddSingleton<WeatherForecastService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+
+var sqlConnectionConfiguration = new SqlConnectionConfiguration("Server=localhost,1433;Database=KIEMKE;User ID=SA;Password=M@tkhau1; Trusted_Connection=True;MultipleActiveResultSets=true;Encrypt=False;");
+builder.Services.AddSingleton(sqlConnectionConfiguration);
 
 var app = builder.Build();
 

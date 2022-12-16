@@ -1,0 +1,114 @@
+﻿@page "/barcode"
+@using Microsoft.JSInterop
+@using BlazorShared.Models;
+@using BlazorShared.Services;
+@using System.Data
+@using Microsoft.SqlServer;
+@using Microsoft.Data.SqlClient;
+
+@inject IJSRuntime jsRuntime
+@inject IProductService productService
+
+
+<MudGrid Justify="Justify.Center" Class="my-1">
+    <MudItem xs="12" sm="6">
+        <div id="qr-reader"></div>
+        <div id="qr-reader-results"></div>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudTabs Elevation="4" Rounded="true" ApplyEffectsToContainer="true" Centered="true" PanelClass="pa-6">
+            <MudTabPanel Text="KIỂM KÊ">
+                <MudText>Kiểm kê hàng hoá</MudText>
+                <MudTextField @bind-Value="product.Barcode" Label="Mã hàng hoá" Variant="Variant.Text"></MudTextField>
+                <MudTextField @bind-Value="product.ProductName" Label="Tên hàng hoá" Variant="Variant.Text"></MudTextField>
+                <MudTextField @bind-Value="product.Quantity" Label="Số lượng" Variant="Variant.Text"></MudTextField>
+                <MudTextField @bind-Value="product.Id" Label="Ghi chú" Variant="Variant.Text"></MudTextField>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="my-2" >Ghi đè</MudButton>
+                <MudButton OnClick="AddProduct" Variant="Variant.Filled" Color="Color.Primary" Class="my-2">Cộng thêm</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" Class="my-2">Huỷ</MudButton>
+            </MudTabPanel>
+            <MudTabPanel Text="ĐÃ KIỂM KÊ">
+                <MudText>Danh sách đã kiểm kê</MudText>
+                <MudTable Items="productList" FixedHeader="true" Height="50vh" Hover="true" Dense="true" Striped="true" Breakpoint="Breakpoint.None" SortLabel="Sort By" Elevation="0">
+                    <HeaderContent>
+                        <MudTh><MudTableSortLabel InitialDirection="SortDirection.Ascending" SortBy="new Func<Product, object>(x=>x.Barcode)">Mã hàng hoá</MudTableSortLabel></MudTh>
+                        <MudTh><MudTableSortLabel SortBy="new Func<Product, object>(x=>x.ProductName)">Tên hàng hoá</MudTableSortLabel></MudTh>
+                        <MudTh><MudTableSortLabel SortBy="new Func<Product, object>(x=>x.Quantity)">Số lượng</MudTableSortLabel></MudTh>
+                        <MudTh><MudTableSortLabel SortBy="new Func<Product, object>(x=>x.Id)">Ghi chú</MudTableSortLabel></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Mã hàng hoá">@context.Barcode</MudTd>
+                        <MudTd DataLabel="Tên hàng hoá">@context.ProductName</MudTd>
+                        <MudTd DataLabel="Số lượng">@context.Quantity</MudTd>
+                        <MudTd DataLabel="Ghi chú">@context.Id</MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[]{50, 100}" />
+                    </PagerContent>
+                </MudTable>
+            </MudTabPanel>
+        </MudTabs>
+    </MudItem>
+</MudGrid>
+
+
+
+@code {
+    private readonly Lazy<Task<IJSObjectReference>> moduleTask = default!;
+    private readonly DotNetObjectReference<BarcodeReader> dotNetObjectReference;
+
+    private Product product = new Product();
+    private List<Product> productList = new List<Product>();
+
+    public BarcodeReader()
+    {
+        moduleTask = new(() => jsRuntime!.InvokeAsync<IJSObjectReference>(
+            identifier: "import",
+            args: "./_content/BlazorShared/barcodeJsInterop.js")
+        .AsTask());
+
+        dotNetObjectReference = DotNetObjectReference.Create(this);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        productList = await productService.GetProductList();
+    }
+
+    public async Task AddProduct()
+    {
+        if (product is not null)
+        {
+            await productService.AddProduct(product);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var module = await moduleTask.Value;
+            await module.InvokeVoidAsync(identifier: "getBarcode", dotNetObjectReference);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnSuccessAsync(string barcodeText)
+    {
+        if (!string.IsNullOrEmpty(barcodeText))
+        {
+            product = await productService.GetProduct(barcodeText);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (moduleTask.IsValueCreated)
+        {
+            var module = await moduleTask.Value;
+            await module.DisposeAsync();
+        }
+    }
+
+}

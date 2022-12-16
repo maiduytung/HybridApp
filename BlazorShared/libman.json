@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "provider": "cdnjs",
+      "library": "html5-qrcode@2.3.4",
+      "destination": "wwwroot/lib/html5-qrcode/"
+    }
+  ]
+}
